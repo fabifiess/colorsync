@@ -2,7 +2,6 @@ var express = require('express');
 var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-var fs = require("fs");
 
 // include external data, eg. css, images (public folder)
 app.use(express.static(__dirname + '/public'));
@@ -27,5 +26,9 @@ io.on('connection', function (socket) {
     socket.on('farbe_ClientToServer', function (data) {
         currentColor = data;
         io.emit('updateCurrentColor', currentColor);
+    });
+
+    socket.on('test',function(data){
+        console.log(data);
     });
 });

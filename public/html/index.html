@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-    <title> Color Sync  </title>
+    <title> Color Sync </title>
     <link rel="shortcut icon" href="../img/favicon.ico">
     <script src="../js/jquery-1.11.1.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -25,20 +25,16 @@
 </div>
 
 <canvas id="canvas"></canvas>
-<div id="status"> 000000</div>
 
 </body>
 
 <script type="text/javascript">
     var socket = io();
-    var currentColor;
-    var prevColor = "000000";
-    var isReady = false;
 
     //synchronice current color on every device
-    socket.on('updateCurrentColor', function (data) {
-        currentColor = data;
-        isReady = true;
+    socket.on('updateCurrentColor', function (currentColor) {
+        $('#canvas').css("background-color", "#" + currentColor);
+        $('body').css("background-color", "#" + currentColor);
     });
 
     // setup image on canvas
@@ -99,7 +95,6 @@
     });
 
     // implement touch gesture
-    //@todo: Touchmove position does not get updated constantly! why?
     $('#canvas').on("touchmove", function (ev) {
         var e = ev.originalEvent;
         e.preventDefault();
@@ -118,21 +113,17 @@
         $('#touchY').text('canvasY: ' + y);
         var c = canvas.getContext('2d');
         var p = c.getImageData(x, y, 1, 1).data;
-        currentColor = ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-    }
+        var currentColor = ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
 
-    // update color in the background, also on all connected devices via server. Also log some info.
-    setInterval(function () {
-        if (isReady == true) {
-            if (currentColor != prevColor && currentColor != "000000") {
-                $('#canvas').css("background-color", "#" + currentColor);
-                $('body').css("background-color", "#" + currentColor);
-                $('#color').text('color: ' + currentColor);
-                socket.emit('farbe_ClientToServer', currentColor); // send to server
-            }
-            prevColor = currentColor;
-        }
-    }, 100);
+        // distribute color information
+        $('#color').text('color: ' + currentColor);
+        $('#canvas').css("background-color", "#" + currentColor);
+        $('body').css("background-color", "#" + currentColor);
+        //@todo: Touchmove position does not get updated constantly! why?
+
+        socket.emit('farbe_ClientToServer', currentColor); // send to server
+        socket.emit('test', currentColor); // watch console in Terminal
+    }
 
     function rgbToHex(r, g, b) {
         return componentToHex(r) + componentToHex(g) + componentToHex(b);
