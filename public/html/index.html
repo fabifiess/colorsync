@@ -1,0 +1,149 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title> Color Sync  </title>
+    <link rel="shortcut icon" href="../img/favicon.ico">
+    <script src="../js/jquery-1.11.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <style>
+        #canvas, body {
+            background-color: #000000;
+        }
+
+        #field {
+            background-color: white;
+        }
+    </style>
+</head>
+
+<body>
+<div id="field">
+    <div id="touchX">touchX</div>
+    <div id="touchY">touchY</div>
+    <div id="color">color</div>
+</div>
+
+<canvas id="canvas"></canvas>
+<div id="status"> 000000</div>
+
+</body>
+
+<script type="text/javascript">
+    var socket = io();
+    var currentColor;
+    var prevColor = "000000";
+    var isReady = false;
+
+    //synchronice current color on every device
+    socket.on('updateCurrentColor', function (data) {
+        currentColor = data;
+        isReady = true;
+    });
+
+    // setup image on canvas
+    var margin = 50;
+    var leftMButtonDown = false;
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+    var img = new Image();
+    img.src = "../img/farbrad.png";
+    img.onload = function () {
+        context.canvas.width = img.width; // apply correct side proportions
+        context.canvas.height = img.height;
+        resize();
+    };
+
+    window.addEventListener('resize', function () {
+        resize();
+    });
+
+    /**
+     * Scale proportionally: If the width of the canvas > the height, the canvas height
+     * equals the height of the browser window. Else, the canvas width equals the width of the browser window.
+     * If the window is resized, the size of the canvas changes dynamically.
+     */
+    function resize() {
+        var ratio = canvas.width / canvas.height;
+        var canvas_height = window.innerHeight;
+        var canvas_width = canvas_height * ratio;
+        if (canvas_width > window.innerWidth) {
+            canvas_width = window.innerWidth;
+            canvas_height = canvas_width / ratio;
+        }
+
+        canvas.width = canvas_width - 2 * margin; // resize canvas
+        canvas.height = canvas_height - 2 * margin;
+        context.drawImage(img, 0, 0, canvas.width, canvas.height); // resize image on the canvas
+    }
+
+    // checks if the left mouse button is pressed
+    $("#canvas").mousedown(function () {
+        leftMButtonDown = true;
+    });
+
+    $("#canvas").mouseup(function () {
+        leftMButtonDown = false;
+    });
+
+    // get the color at the mouse position on mouse move, but only if the left mouse button is pressed
+    $('#canvas').mousemove(function (e) {
+        if (leftMButtonDown == true) {
+            getColorAtPos(e.pageX, e.pageY);
+        }
+    });
+
+    // get the color at mouse position on click
+    $('#canvas').click(function (e) {
+        getColorAtPos(e.pageX, e.pageY);
+    });
+
+    // implement touch gesture
+    //@todo: Touchmove position does not get updated constantly! why?
+    $('#canvas').on("touchmove", function (ev) {
+        var e = ev.originalEvent;
+        e.preventDefault();
+        getColorAtPos(e.targetTouches[0].pageX, e.targetTouches[0].pageY);
+    });
+
+    // get canvas position and color at this position (mouse/touch)
+    function getColorAtPos(pageX, pageY) {
+        var canvasTopLeft = {
+            x: canvas.offsetLeft,
+            y: canvas.offsetTop
+        }
+        var x = pageX - canvasTopLeft.x;
+        var y = pageY - canvasTopLeft.y;
+        $('#touchX').text('canvasX: ' + x);
+        $('#touchY').text('canvasY: ' + y);
+        var c = canvas.getContext('2d');
+        var p = c.getImageData(x, y, 1, 1).data;
+        currentColor = ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+    }
+
+    // update color in the background, also on all connected devices via server. Also log some info.
+    setInterval(function () {
+        if (isReady == true) {
+            if (currentColor != prevColor && currentColor != "000000") {
+                $('#canvas').css("background-color", "#" + currentColor);
+                $('body').css("background-color", "#" + currentColor);
+                $('#color').text('color: ' + currentColor);
+                socket.emit('farbe_ClientToServer', currentColor); // send to server
+            }
+            prevColor = currentColor;
+        }
+    }, 100);
+
+    function rgbToHex(r, g, b) {
+        return componentToHex(r) + componentToHex(g) + componentToHex(b);
+    }
+
+    function componentToHex(c) {
+        var hex = c.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+    }
+
+    // get border around canvas
+    $('#canvas').css('margin', margin);
+</script>
+</html>
