@@ -19,8 +19,11 @@
 
 <body>
 <div id="field">
+    canvasX (Position wird vom Client direkt im Touchmove-Handler ausgegeben):
+    <div id="directOut">directOut</div>
+    canvasX (Position wird vom Client in der Funktion getColorAtPosition ausgegeben):
     <div id="touchX">touchX</div>
-    <div id="touchY">touchY</div>
+    <!--<div id="touchY">touchY</div>-->
     <div id="color">color</div>
 </div>
 
@@ -98,35 +101,44 @@
 
         //@todo: Touchmove position does not get updated constantly! why?
 
+    /**
+     * with throttle
+     */
+
     $('#canvas').on("touchmove", _.throttle(function (ev) {
         var e = ev.originalEvent;
-        socket.emit('test', 'huhu'); // watch console in Terminal
+//        socket.emit('test', 'xPos: '+ e.targetTouches[0].pageX); // watch console in Terminal
+        $('#directOut').text(e.targetTouches[0].pageX - canvas.offsetLeft); // watch console in Terminal
         getColorAtPos(e.targetTouches[0].pageX, e.targetTouches[0].pageY);
         return false;
-    }, 150));
+    }, 500));
 
     /**
      * without throttle
      */
 
-    // implement touch gesture
+
 //    $('#canvas').on("touchmove", function (ev) {
 //        var e = ev.originalEvent;
-//        e.preventDefault();
+//        $('#directOut').text(e.targetTouches[0].pageX); // watch console in Terminal
 //        getColorAtPos(e.targetTouches[0].pageX, e.targetTouches[0].pageY);
+//        return false; // instead of e.preventDefault();
 //    });
 
 
+
+    var logCounter = 0;
     // get canvas position and color at this position (mouse/touch)
     function getColorAtPos(pageX, pageY) {
+        logCounter++;
         var canvasTopLeft = {
             x: canvas.offsetLeft,
             y: canvas.offsetTop
         }
         var x = pageX - canvasTopLeft.x;
         var y = pageY - canvasTopLeft.y;
-        $('#touchX').text('canvasX: ' + x);
-        $('#touchY').text('canvasY: ' + y);
+        $('#touchX').text(x);
+//        $('#touchY').text('canvasY: ' + y);
         var c = canvas.getContext('2d');
         var p = c.getImageData(x, y, 1, 1).data;
         var currentColor = ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
@@ -137,7 +149,7 @@
         $('body').css("background-color", "#" + currentColor);
 
         socket.emit('farbe_ClientToServer', currentColor); // send to server
-//        socket.emit('test', currentColor); // watch console in Terminal
+        socket.emit('test', logCounter+' : '+currentColor); // watch console in Terminal
     }
 
     function rgbToHex(r, g, b) {
